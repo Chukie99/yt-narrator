@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YT Narrator — Auto YouTube Videos</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎬 YT Narrator</h1>
+            <p>Auto-generate YouTube ink-explainer videos from topics</p>
+        </header>
+
+        <main>
+            <!-- Submit Form -->
+            <section id="submit-section" class="section">
+                <h2>Create Video</h2>
+                <form id="submit-form">
+                    <input type="text" id="topic-input" placeholder="Enter topic (e.g., 'Why is the sky blue?')" required>
+                    <button type="submit">Generate Video</button>
+                </form>
+                <div id="estimate-result" class="hidden">
+                    <p>Estimated: <span id="est-images"></span> images, <span id="est-cost"></span> cost, <span id="est-time"></span></p>
+                    <button id="approve-btn">Approve & Start</button>
+                </div>
+            </section>
+
+            <!-- Status Section -->
+            <section id="status-section" class="section hidden">
+                <h2>Processing...</h2>
+                <div id="job-info">
+                    <p>Job ID: <code id="job-id"></code></p>
+                    <p>Status: <strong id="job-status"></strong></p>
+                    <p>Stage: <span id="job-stage"></span></p>
+                    <p>Progress: <span id="job-progress"></span></p>
+                </div>
+                <div id="error-msg" class="hidden alert">
+                    <strong>Error:</strong> <span id="error-text"></span>
+                </div>
+            </section>
+
+            <!-- Download Section -->
+            <section id="download-section" class="section hidden">
+                <h2>✓ Complete</h2>
+                <a id="download-btn" href="#" class="btn-primary">Download Video</a>
+                <button id="regenerate-btn">Regenerate</button>
+                <button id="new-job-btn">Create New</button>
+            </section>
+        </main>
+
+        <footer>
+            <p>Cost: <strong>$0.00</strong> (fully free) | Drift: <strong>&lt; 100ms</strong> | Framerate: <strong>24fps</strong></p>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
