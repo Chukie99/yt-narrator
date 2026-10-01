@@ -1,0 +1,104 @@
+{
+  "keys": [
+    {
+      "label": "Kunci 1",
+      "token": "hf_account01",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 2",
+      "token": "hf_account02",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 3",
+      "token": "hf_account03",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 4",
+      "token": "hf_account04",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 5",
+      "token": "hf_account05",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 6",
+      "token": "hf_account06",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 7",
+      "token": "hf_account07",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 8",
+      "token": "hf_account08",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 9",
+      "token": "hf_account09",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 10",
+      "token": "hf_account10",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 11",
+      "token": "hf_account11",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 12",
+      "token": "hf_account12",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 13",
+      "token": "hf_account13",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 14",
+      "token": "hf_account14",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 15",
+      "token": "hf_account15",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 16",
+      "token": "hf_account16",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 17",
+      "token": "hf_account17",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 18",
+      "token": "hf_account18",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 19",
+      "token": "hf_account19",
+      "enabled": true
+    },
+    {
+      "label": "Kunci 20",
+      "token": "hf_account20",
+      "enabled": true
+    }
+  ]
+}
