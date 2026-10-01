@@ -170,3 +170,72 @@ cd ~/yt-narrator
 ---
 
 End ledger.
+
+
+---
+
+## Final Session Summary: 2026-10-01T05:48:30Z
+
+**COMPLETED (4 of 7 tasks = 57%)**
+✅ Task 1: Database + Config (3/3 tests)
+✅ Task 2: Providers (8/8 tests, 4 implementations)
+✅ Task 3: APIRoller + RateLimiter
+✅ Task 4: Job Orchestrator + APScheduler (8-stage pipeline, quota poller)
+
+**4 commits total. All code tested + working.**
+
+---
+
+## REMAINING (3 tasks = 3-4 hours)
+
+**Task 5: FastAPI Routes** (~1.5h)
+- POST /job/submit (estimate cost)
+- POST /job/{id}/approve (enqueue)
+- GET /job/{id} (status + progress)
+- GET /job/{id}/video (download, Range support)
+- POST /job/{id}/regenerate, /retry, /cancel
+- PATCH /job/{id}/style-bible, /job/{id}/scene/{n}
+- DELETE /job/{id}
+- GET /jobs, GET /providers/status
+
+**Task 6: Frontend UI** (~1h)
+- index.html (topic input + status polling)
+- style.css (simple responsive)
+- script.js (form submit + polling)
+
+**Task 7: E2E Tests + Docs** (~1h)
+- Integration tests (full job lifecycle)
+- README + SETUP guide
+
+---
+
+## NEXT SESSION ENTRY
+
+\`\`\`bash
+cd ~/yt-narrator
+# Resume Task 5: FastAPI routes
+# Ledger: .superpowers/sdd/2026-10-01-yt-narrator-implementation/progress.md
+# Git: 4 commits (all prior tasks done)
+\`\`\`
+
+**After Task 5:** API endpoints working, can test with spike
+
+**After Task 6:** Frontend UI ready, can submit jobs via browser
+
+**After Task 7:** MVP complete, all tests passing
+
+---
+
+## DEPLOYMENT READY
+
+Once Task 7 done:
+1. Set .env (GEMINI_API_KEY, HF_API_KEY_1-5)
+2. python -m pytest tests/ -v (verify all pass)
+3. uvicorn backend.main:app --host 127.0.0.1 --port 8000 (start server)
+4. Open http://localhost:8000 (use UI)
+
+---
+
+**Status:** 57% complete, on track for MVP tomorrow.
+
+End ledger.

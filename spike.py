@@ -58,6 +58,8 @@ def log(msg, level="INFO"):
 async def generate_image_hf(prompt: str, scene_num: int) -> Optional[Path]:
     """Generate image via HF Inference API + FLUX.1 Schnell."""
     from huggingface_hub import InferenceClient
+    from PIL import Image
+    from io import BytesIO
     
     log(f"Generating image for scene {scene_num} via HF+FLUX.1...")
     
@@ -68,17 +70,19 @@ async def generate_image_hf(prompt: str, scene_num: int) -> Optional[Path]:
     try:
         client = InferenceClient(api_key=HF_API_KEY)
         
-        image_bytes = client.text_to_image(
+        image = client.text_to_image(
             prompt=prompt,
             model="black-forest-labs/FLUX.1-schnell",
             height=1080,
             width=1920
         )
         
+        # Convert PIL Image to PNG bytes
         image_path = WORK_DIR / f"scene_{scene_num}.png"
-        image_path.write_bytes(image_bytes)
+        image.save(image_path, format="PNG")
         
-        log(f"  ✓ Saved to {image_path} ({len(image_bytes) / 1024:.1f} KB)")
+        image_size = image_path.stat().st_size
+        log(f"  ✓ Saved to {image_path} ({image_size / 1024:.1f} KB)")
         return image_path
         
     except Exception as e:
@@ -155,33 +159,34 @@ def generate_kenburns(
         )
         log(f"  ✓ Upscaled")
         
-        # Ken Burns patterns [FIX: use 'on' not 't', 'iw'/'ih' not 'W'/'H']
+        # Ken Burns patterns [FIX: correct zoompan syntax]
         patterns = {
-            "wide": "z='min(1+0.0015*on,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'",
-            "close-up": "z='min(1+0.002*on,1.5)':x='iw/4':y='ih/4'",
-            "from-top": "z='min(1+0.0015*on,1.5)':x='iw/2-(iw/zoom/2)':y='0'",
+            "wide": "zoompan=z='min(1+0.0015*on,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1920x1080:fps=24",
+            "close-up": "zoompan=z='min(1+0.002*on,1.5)':x='iw/4':y='ih/4':d=1:s=1920x1080:fps=24",
+            "from-top": "zoompan=z='min(1+0.0015*on,1.5)':x='iw/2-(iw/zoom/2)':y='0':d=1:s=1920x1080:fps=24",
         }
         zoompan = patterns.get(composition, patterns["wide"])
         
-        # Generate video [FIX: use -t for duration, d=1 in zoompan]
-        output_path = WORK_DIR / f"scene_{scene_num}_{composition}_kenburns.mp4"
-        duration_sec = num_frames / FPS
+        # Generate video
+        fps = 24
+        out_path = WORK_DIR / f"scene_{scene_num}_{composition}_kenburns.mp4"
+        duration_sec = num_frames / fps
         
         cmd = [
             "ffmpeg", "-y", "-loop", "1", "-i", str(upscaled_path),
-            "-vf", f"{zoompan}:d=1:s=1920x1080:fps={FPS}",
+            "-vf", zoompan,
             "-t", str(duration_sec),
             "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-            "-pix_fmt", "yuv420p", "-r", str(FPS),
+            "-pix_fmt", "yuv420p", "-r", str(fps),
             "-an",
-            str(output_path)
+            str(out_path)
         ]
         
         subprocess.run(cmd, check=True, capture_output=True, timeout=600)
-        log(f"  ✓ Generated {output_path}")
+        log(f"  ✓ Generated {out_path}")
         
         upscaled_path.unlink()  # cleanup
-        return output_path
+        return out_path
     
     except Exception as e:
         log(f"  ✗ Error: {e}", "ERROR")
