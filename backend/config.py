@@ -28,15 +28,10 @@ LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.0-flash")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # T2I (HF Inference + FLUX.1)
+# HF keys are NOT read from env here: they live in data/keys.json so the UI can
+# add or disable them while the app is running. See backend/keystore.py.
 IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER", "hf_inference")
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "black-forest-labs/FLUX.1-schnell")
-
-# Load HF API keys from env
-HF_API_KEYS = {}
-for i in range(1, 20):
-    key = os.getenv(f"HF_API_KEY_{i}")
-    if key:
-        HF_API_KEYS[i] = key
 
 # TTS (edge-tts)
 TTS_PROVIDER = os.getenv("TTS_PROVIDER", "edge_tts")

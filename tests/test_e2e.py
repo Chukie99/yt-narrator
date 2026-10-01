@@ -1,68 +1,78 @@
-"""End-to-end tests: full pipeline."""
+"""Integration checks that the app boots and serves the real flow.
+
+The full pipeline (LLM -> TTS -> image -> motion -> compile) is covered by
+spike.py, which needs live API keys. These tests stay offline and check the
+wiring instead: the app imports, the key routes work, and a submitted job
+lands in the database.
+"""
+
+import tempfile
+import uuid
+from pathlib import Path
 
 import pytest
-import json
-import asyncio
-from pathlib import Path
-from backend.db import init_db
-from backend.worker import process_job
-from backend.scheduler import start_scheduler
-from backend.config import Config
+from fastapi.testclient import TestClient
 
 
-@pytest.mark.asyncio
-async def test_e2e_full_pipeline(tmp_path, monkeypatch):
-    """Full pipeline: submit → LLM → TTS → images → Ken Burns → compile."""
-    # Setup
-    config = Config()
-    config.DATABASE_URL = f"sqlite:///{tmp_path}/test.db"
-    config.CACHE_DIR = tmp_path / "cache"
-    config.OUTPUT_DIR = tmp_path / "output"
-    
-    monkeypatch.setattr("backend.config.config", config)
-    
-    # Init DB
-    init_db()
-    
-    # Submit job
-    job_id = "test-job-001"
-    db = config.get_db()
-    db.execute(
-        "INSERT INTO jobs (id, title, status, stage, progress) VALUES (?, ?, ?, ?, ?)",
-        (job_id, "Test Topic", "pending", None, "")
-    )
-    db.commit()
-    
-    # Process (would be async in real app)
-    # This is a unit test; full E2E requires env vars (HF_API_KEY, GEMINI_API_KEY)
-    
-    # Verify job exists
-    row = db.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
-    assert row is not None
-    assert row[2] == "pending"  # status
+@pytest.fixture
+def client(monkeypatch):
+    tmpdir = Path(tempfile.mkdtemp())
+    import backend.providers.hf_inference as hf
+
+    monkeypatch.setattr(hf.key_store, "path", tmpdir / "keys.json")
+    monkeypatch.setattr("backend.main.key_store", hf.key_store)
+
+    from backend.main import app
+
+    return TestClient(app)
 
 
-def test_db_schema():
-    """Verify database schema."""
-    from backend.db import init_db, get_db
-    db = get_db()
-    
-    # Check tables exist
-    tables = db.execute(
-        "SELECT name FROM sqlite_master WHERE type='table'"
-    ).fetchall()
-    table_names = [t[0] for t in tables]
-    
-    assert "jobs" in table_names
-    assert "job_scenes" in table_names
-    assert "image_cache" in table_names
+def test_app_imports_and_serves(client):
+    assert client.get("/keys").status_code == 200
 
 
-def test_config_from_env(monkeypatch):
-    """Config loads from env vars."""
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    monkeypatch.setenv("HF_API_KEY_1", "hf-key-1")
-    
-    config = Config()
-    assert config.GEMINI_API_KEY == "test-key"
-    assert config.hf_api_keys[0] == "hf-key-1"
+def test_index_page_is_served_at_root(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "YT Narrator" in r.text
+    assert "Kunci API" in r.text
+
+
+def test_submit_creates_pending_job(client):
+    topic = "Sejarahnya insula Hasta"
+    r = client.post("/job/submit", json={"topic": topic})
+    assert r.status_code == 200
+    job_id = r.json()["job_id"]
+    uuid.UUID(job_id)  # must be a real UUID
+
+    status = client.get(f"/job/{job_id}")
+    assert status.status_code == 200
+    assert status.json()["status"] == "pending"
+
+
+def test_submit_rejects_short_topic(client):
+    assert client.post("/job/submit", json={"topic": "ab"}).status_code == 422
+
+
+def test_submit_rejects_blank_topic(client):
+    assert client.post("/job/submit", json={"topic": "   "}).status_code == 422
+
+
+def test_unknown_job_is_404(client):
+    assert client.get(f"/job/{uuid.uuid4()}").status_code == 404
+
+
+def test_malformed_job_id_is_400(client):
+    assert client.get("/job/not-a-uuid").status_code == 400
+
+
+def test_video_download_before_done_is_rejected(client):
+    """A finished-only route must refuse an unfinished job, not 500."""
+    job_id = client.post("/job/submit", json={"topic": "Awal mula metallurgy"}).json()["job_id"]
+    assert client.get(f"/job/{job_id}/video").status_code == 400
+
+
+def test_cancel_from_pending_is_rejected(client):
+    """A job that never started cannot be cancelled."""
+    job_id = client.post("/job/submit", json={"topic": "Awal mula agriculture"}).json()["job_id"]
+    assert client.post(f"/job/{job_id}/cancel").status_code == 409

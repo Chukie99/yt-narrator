@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT Narrator</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --kertas: #f2ece0;
+    --kertas-tua: #e8e0d1;
+    --tinta: #241f1a;
+    --tinta-lembut: #6b5844;
+    --garis: #d5cab6;
+    --oker: #8a6a3d;
+    --okol: #7a2e28;
+    --hijau: #4a6b45;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--kertas);
+    color: var(--tinta);
+    font-family: 'Public Sans', system-ui, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 64px 24px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* tekstur kertas: grain halus, bukan grid */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+
+  .lembar {
+    max-width: 640px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* identitas: garis rambut di bawah judul */
+  .kop {
+    border-bottom: 1px solid var(--garis);
+    padding-bottom: 20px;
+    margin-bottom: 40px;
+  }
+
+  .kop h1 {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 40px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+
+  .kop p {
+    font-size: 15px;
+    color: var(--tinta-lembut);
+    max-width: 46ch;
+  }
+
+  /* state: idle */
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--tinta-lembut);
+    margin-bottom: 8px;
+  }
+
+  .field textarea {
+    width: 100%;
+    min-height: 84px;
+    padding: 12px 14px;
+    background: #fbf7f0;
+    border: 1px solid var(--garis);
+    border-radius: 2px;
+    font-family: 'Public Sans', sans-serif;
+    font-size: 15px;
+    color: var(--tinta);
+    resize: vertical;
+    transition: border-color 140ms ease, background 140ms ease;
+  }
+
+  .field textarea::placeholder { color: #9d8d78; }
+  .field textarea:hover { border-color: #bfb096; }
+
+  .field textarea:focus {
+    outline: none;
+    border-color: var(--oker);
+    background: #fffdf9;
+    box-shadow: 0 0 0 3px rgba(138, 106, 61, 0.14);
+  }
+
+  /* fokus keyboard: outlinegone diganti indikator yang lebih jelas */
+  a:focus-visible,
+  button:focus-visible {
+    outline: 2px solid var(--oker);
+    outline-offset: 2px;
+  }
+
+  .petunjuk {
+    font-size: 13px;
+    color: var(--tinta-lembut);
+    margin-top: 8px;
+  }
+
+  /* CTA: satu-satunya tempat oker dipakai */
+  .aksi {
+    margin-top: 24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  button.utama {
+    font-family: 'Public Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fbf7f0;
+    background: var(--oker);
+    border: 1px solid var(--oker);
+    border-radius: 2px;
+    padding: 11px 20px;
+    cursor: pointer;
+    transition: background 140ms ease;
+  }
+
+  button.utama:hover { background: #75592f; }
+  button.utama:disabled { background: #b7a78c; border-color: #b7a78c; cursor: not-allowed; }
+
+  button.sekunder {
+    font-family: 'Public Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--tinta-lembut);
+    background: transparent;
+    border: 1px solid var(--garis);
+    border-radius: 2px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: border-color 140ms ease, color 140ms ease;
+  }
+
+  button.sekunder:hover { border-color: var(--tinta-lembut); color: var(--tinta); }
+  button.sekunder[hidden] { display: none; }
+
+  /* state: loading */
+  .pantileis {
+    margin-top: 32px;
+    padding: 18px 20px;
+    background: #fbf7f0;
+    border: 1px solid var(--garis);
+    border-left: 2px solid var(--oker);
+    border-radius: 2px;
+  }
+
+  .pantileis[hidden] { display: none; }
+
+  .pantileis .baris-atas {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+
+  .pantileis .tahap {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 19px;
+    font-weight: 500;
+  }
+
+  /* dot ini menandai state nyata (lagi jalan), bukan dekorasi */
+  .keadaan {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--hijau);
+  }
+
+  .keadaan::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--hijau);
+  }
+
+  .keadaan.gagal { color: var(--okol); }
+  .keadaan.gagal::before { background: var(--okol); }
+
+  .pantileis dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+  }
+
+  .pantileis dt { color: var(--tinta-lembut); }
+  .pantileis dd { color: var(--tinta); font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 12.5px; }
+
+  /* state: error */
+  .galat {
+    margin-top: 24px;
+    padding: 14px 16px;
+    background: #f6ebe6;
+    border: 1px solid #dcc4b8;
+    border-left: 2px solid var(--okol);
+    border-radius: 2px;
+    font-size: 14px;
+    color: #5c2620;
+  }
+
+  .galat[hidden] { display: none; }
+  .galat strong { display: block; margin-bottom: 4px; font-weight: 600; }
+
+  /* link unduhan: pakai tinta, bukan warna aksen */
+  .unduh {
+    display: inline-block;
+    margin-top: 20px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--tinta);
+    text-decoration: underline;
+    text-decoration-color: var(--oker);
+    text-underline-offset: 4px;
+    text-decoration-thickness: 2px;
+  }
+
+  .unduh:hover { color: var(--oker); }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 18px;
+    border-top: 1px solid var(--garis);
+    font-size: 12.5px;
+    color: var(--tinta-lembut);
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 560px) {
+    body { padding: 40px 18px 64px; }
+    .kop h1 { font-size: 30px; }
+    .aksi { flex-direction: column; align-items: stretch; }
+    button.utama, button.sekunder { width: 100%; }
+    .pantileis dl { grid-template-columns: 1fr; gap: 2px 0; }
+    .pantileis dd { margin-bottom: 8px; }
+  }
+</style>
+</head>
+<body>
+<main class="lembar">
+
+  <header class="kop">
+    <h1>YT Narrator</h1>
+    <p>Tulis judul.topik. Narasi, gambar, dan videonya dibikin otomatis di PC lu.</p>
+  </header>
+
+  <form id="form-judul" novalidate>
+    <div class="field">
+      <label for="topik">Judul topik</label>
+      <textarea id="topik" name="topik" placeholder="Contoh: Sejarahnya insula Hasta"></textarea>
+      <p class="petunjuk">Makin spesifik makin bagus hasil gambarnya.</p>
+    </div>
+    <div class="aksi">
+      <button type="submit" class="utama" id="tombol">Buat videonya</button>
+      <button type="button" class="sekunder" id="tombol-batal" hidden>Batalkan</button>
+    </div>
+  </form>
+
+  <section class="pantileis" id="pantileis" hidden aria-live="polite">
+    <div class="baris-atas">
+      <span class="tahap" id="tahap">Menyiapkan</span>
+      <span class="keadaan" id="keadaan">Berjalan</span>
+    </div>
+    <dl>
+      <dt>ID pekerjaan</dt>
+      <dd id="id-pekerjaan">-</dd>
+      <dt>Tahap sebelumnya</dt>
+      <dd id="tahap-sebelumnya">-</dd>
+    </dl>
+    <a class="unduh" id="unduh" href="#" hidden>Unduh video MP4</a>
+  </section>
+
+  <div class="galat" id="galat" hidden role="alert">
+    <strong id="galat-judul">Gagal</strong>
+    <span id="galat-pesan"></span>
+  </div>
+
+  <footer>
+    <span>Berjalan lokal di 127.0.0.1</span>
+    <span>FLUX.1 untuk gambar, edge-tts untuk suara</span>
+  </footer>
+
+</main>
+
+<script>
+  // Mockup: belum terhubung ke backend. Hanya illustrates 3 state.
+  const form = document.getElementById('form-judul');
+  const tombol = document.getElementById('tombol');
+  const batal = document.getElementById('tombol-batal');
+  const topik = document.getElementById('topik');
+  const pantileis = document.getElementById('pantileis');
+  const tahap = document.getElementById('tahap');
+  const keadaan = document.getElementById('keadaan');
+  const idPekerjaan = document.getElementById('id-pekerjaan');
+  const tahapSebelumnya = document.getElementById('tahap-sebelumnya');
+  const unduh = document.getElementById('unduh');
+  const galat = document.getElementById('galat');
+  const galatPesan = document.getElementById('galat-pesan');
+
+  // Tahapan (mockup, buat demo state)
+  const TAHAP = ['Menyiapkan', 'Menulis narasi', 'Membuat suara', 'Menggambar adegan', 'Menyusun video', 'Selesai'];
+
+  function tampilkanPantileis() {
+    pantileis.hidden = false;
+    galat.hidden = true;
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!topik.value.trim()) {
+      galat.hidden = false;
+      galatPesan.textContent = 'Isi dulu judul topik.';
+      topik.focus();
+      return;
+    }
+    tampilkanPantileis();
+    tombol.disabled = true;
+    batal.hidden = false;
+    idPekerjaan.textContent = 'a1b2c3d4';
+    tahapSebelumnya.textContent = '-';
+    // mockup: jangan diam, tunjukkan Tahap bergerak
+    let i = 0;
+    const timer = setInterval(function () {
+      if (i > 0) tahapSebelumnya.textContent = TAHAP[i - 1];
+      tahap.textContent = TAHAP[i];
+      keadaan.textContent = i === TAHAP.length - 1 ? 'Selesai' : 'Berjalan';
+      if (i === TAHAP.length - 1) {
+        clearInterval(timer);
+        unduh.hidden = false;
+        unduh.href = '#';
+        tombol.disabled = false;
+        batal.hidden = true;
+      }
+      i++;
+    }, 1400);
+  });
+
+  batal.addEventListener('click', function () {
+    location.reload();
+  });
+</script>
+</body>
+</html>

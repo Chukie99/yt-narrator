@@ -1,278 +1,692 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YT Narrator — Auto YouTube Videos</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-primary: #08090a;
-            --bg-panel: #0f1011;
-            --bg-surface: #191a1b;
-            --bg-hover: #28282c;
-            --text-primary: #f7f8f8;
-            --text-secondary: #d0d6e0;
-            --text-tertiary: #8a8f98;
-            --text-quaternary: #62666d;
-            --brand-indigo: #5e6ad2;
-            --brand-accent: #7170ff;
-            --brand-hover: #828fff;
-            --border-subtle: rgba(255, 255, 255, 0.05);
-            --border-standard: rgba(255, 255, 255, 0.08);
-            --success: #10b981;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT Narrator</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --kertas: #f2ece0;
+    --tinta: #241f1a;
+    --tinta-lembut: #6b5844;
+    --garis: #d5cab6;
+    --oker: #8a6a3d;
+    --oker-mati: #b7a78c;
+    --okol: #7a2e28;
+    --hijau: #4a6b45;
+  }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        body {
-            font-family: 'Inter', -apple-system, system-ui, 'Segoe UI', sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.5;
-            min-height: 100vh;
-        }
+  body {
+    background: var(--kertas);
+    color: var(--tinta);
+    font-family: 'Public Sans', system-ui, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 64px 24px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 64px 24px;
-        }
+  /* tekstur kertas: grain halus, bukan grid */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
 
-        header {
-            margin-bottom: 64px;
-            text-align: center;
-        }
+  .lembar {
+    max-width: 640px;
+    margin: 0 auto;
+    position: relative;
+  }
 
-        header h1 {
-            font-size: 48px;
-            font-weight: 500;
-            letter-spacing: -1.056px;
-            margin-bottom: 12px;
-            color: var(--text-primary);
-            font-feature-settings: "cv01", "ss03";
-        }
+  /* identitas: garis rambut di bawah judul */
+  .kop {
+    border-bottom: 1px solid var(--garis);
+    padding-bottom: 20px;
+    margin-bottom: 40px;
+  }
 
-        header p {
-            font-size: 16px;
-            color: var(--text-tertiary);
-            font-weight: 400;
-        }
+  .kop h1 {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 40px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
 
-        main {
-            min-height: 300px;
-        }
+  .kop p {
+    font-size: 15px;
+    color: var(--tinta-lembut);
+    max-width: 46ch;
+  }
 
-        .section {
-            margin-bottom: 48px;
-        }
+  .bagian { margin-bottom: 48px; }
 
-        .section h2 {
-            font-size: 20px;
-            font-weight: 590;
-            letter-spacing: -0.24px;
-            margin-bottom: 24px;
-            color: var(--text-primary);
-            font-feature-settings: "cv01", "ss03";
-        }
+  .field label,
+  .judul-bagian {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--tinta-lembut);
+    margin-bottom: 8px;
+  }
 
-        form {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 24px;
-        }
+  .judul-bagian {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--tinta);
+    margin-bottom: 4px;
+  }
 
-        input[type="text"],
-        textarea {
-            flex: 1;
-            padding: 11px 13px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-standard);
-            border-radius: 6px;
-            color: var(--text-secondary);
-            font-size: 15px;
-            font-family: 'Inter', sans-serif;
-            font-feature-settings: "cv01", "ss03";
-            transition: all 0.2s;
-        }
+  .field textarea,
+  .field input {
+    width: 100%;
+    padding: 12px 14px;
+    background: #fbf7f0;
+    border: 1px solid var(--garis);
+    border-radius: 2px;
+    font-family: 'Public Sans', sans-serif;
+    font-size: 15px;
+    color: var(--tinta);
+    resize: vertical;
+    transition: border-color 140ms ease, background 140ms ease;
+  }
 
-        input[type="text"]:focus,
-        textarea:focus {
-            outline: none;
-            background: rgba(255, 255, 255, 0.04);
-            border-color: var(--brand-accent);
-            box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;
-        }
+  .field textarea {
+    min-height: 84px;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
 
-        button {
-            padding: 11px 16px;
-            background: var(--brand-indigo);
-            color: var(--text-primary);
-            border: none;
-            border-radius: 6px;
-            font-size: 15px;
-            font-weight: 510;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-feature-settings: "cv01", "ss03";
-        }
+  .field textarea::placeholder { color: #9d8d78; }
+  .field textarea:hover,
+  .field input:hover { border-color: #bfb096; }
 
-        button:hover {
-            background: var(--brand-hover);
-        }
+  .field textarea:focus,
+  .field input:focus {
+    outline: none;
+    border-color: var(--oker);
+    background: #fffdf9;
+    box-shadow: 0 0 0 3px rgba(138, 106, 61, 0.14);
+  }
 
-        button.secondary {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-standard);
-            color: var(--text-secondary);
-            margin-right: 8px;
-        }
+  /* fokus keyboard: outline diganti indikator yang lebih jelas */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--oker);
+    outline-offset: 2px;
+  }
 
-        button.secondary:hover {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-primary);
-        }
+  .petunjuk {
+    font-size: 13px;
+    color: var(--tinta-lembut);
+    margin-top: 8px;
+  }
 
-        .job-info {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-standard);
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
+  .aksi {
+    margin-top: 24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
 
-        .job-info p {
-            font-size: 15px;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+  button.utama,
+  button.sekunder {
+    font-family: 'Public Sans', sans-serif;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  }
 
-        .job-info code {
-            background: rgba(255, 255, 255, 0.03);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            color: var(--brand-accent);
-        }
+  button.utama {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fbf7f0;
+    background: var(--oker);
+    border: 1px solid var(--oker);
+    padding: 11px 20px;
+  }
 
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 510;
-        }
+  button.utama:hover:not(:disabled) { background: #75592f; }
+  button.utama:disabled { background: var(--oker-mati); border-color: var(--oker-mati); cursor: not-allowed; }
 
-        .alert {
-            background: rgba(220, 38, 38, 0.1);
-            border: 1px solid rgba(220, 38, 38, 0.3);
-            border-radius: 6px;
-            padding: 12px;
-            color: #fca5a5;
-            font-size: 14px;
-            margin-top: 16px;
-        }
+  button.sekunder {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--tinta-lembut);
+    background: transparent;
+    border: 1px solid var(--garis);
+    padding: 10px 16px;
+  }
 
-        .hidden {
-            display: none !important;
-        }
+  button.sekunder:hover { border-color: var(--tinta-lembut); color: var(--tinta); }
+  button.sekunder.kecil { font-size: 13px; padding: 5px 10px; }
+  button.sekunder[hidden] { display: none; }
 
-        footer {
-            margin-top: 64px;
-            padding-top: 32px;
-            border-top: 1px solid var(--border-subtle);
-            text-align: center;
-            font-size: 13px;
-            color: var(--text-quaternary);
-        }
+  /* panel status: rule tinta di sisi kiri, seperti lembar kerja */
+  .pantileis {
+    margin-top: 32px;
+    padding: 18px 20px;
+    background: #fbf7f0;
+    border: 1px solid var(--garis);
+    border-left: 2px solid var(--oker);
+    border-radius: 2px;
+  }
 
-        footer p {
-            margin: 4px 0;
-        }
+  .pantileis[hidden] { display: none; }
 
-        @media (max-width: 768px) {
-            header h1 {
-                font-size: 32px;
-                letter-spacing: -0.704px;
-            }
+  .baris-atas {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
 
-            form {
-                flex-direction: column;
-            }
+  .tahap {
+    font-family: 'Newsreader', Georgia, serif;
+    font-size: 19px;
+    font-weight: 500;
+  }
 
-            button {
-                width: 100%;
-            }
-        }
-    </style>
+  /* dot menandai state nyata, bukan dekorasi */
+  .keadaan {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--hijau);
+  }
+
+  .keadaan::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--hijau);
+  }
+
+  .keadaan.gagal { color: var(--okol); }
+  .keadaan.gagal::before { background: var(--okol); }
+
+  .pantileis dl {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+  }
+
+  .pantileis dt { color: var(--tinta-lembut); }
+  .pantileis dd { color: var(--tinta); font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 12.5px; }
+
+  .unduh {
+    display: inline-block;
+    margin-top: 20px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--tinta);
+    text-decoration: underline;
+    text-decoration-color: var(--oker);
+    text-underline-offset: 4px;
+    text-decoration-thickness: 2px;
+  }
+
+  .unduh:hover { color: var(--oker); }
+
+  /* daftar kunci */
+  .daftar-kunci { list-style: none; margin-top: 20px; }
+
+  .daftar-kunci li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--garis);
+    font-size: 14px;
+  }
+
+  .daftar-kunci li:last-child { border-bottom: none; }
+
+  .daftar-kunci .token {
+    font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-size: 13px;
+    color: var(--tinta);
+  }
+
+  .daftar-kunci .nama {
+    color: var(--tinta-lembut);
+    font-size: 13px;
+    margin-right: auto;
+  }
+
+  .daftar-kunci li.mati .token,
+  .daftar-kunci li.mati .nama { color: #a2937e; text-decoration: line-through; }
+
+  .daftar-kunci .aksi-kecil { display: flex; gap: 6px; }
+
+  .kosong {
+    font-size: 14px;
+    color: var(--tinta-lembut);
+    padding: 12px 0;
+  }
+
+  .galat {
+    margin-top: 24px;
+    padding: 14px 16px;
+    background: #f6ebe6;
+    border: 1px solid #dcc4b8;
+    border-left: 2px solid var(--okol);
+    border-radius: 2px;
+    font-size: 14px;
+    color: #5c2620;
+  }
+
+  .galat[hidden] { display: none; }
+  .galat strong { display: block; margin-bottom: 4px; font-weight: 600; }
+
+  .galat.berhasil {
+    background: #eef2ec;
+    border-color: #c3d0be;
+    border-left-color: var(--hijau);
+    color: #3a5436;
+  }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 18px;
+    border-top: 1px solid var(--garis);
+    font-size: 12.5px;
+    color: var(--tinta-lembut);
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 560px) {
+    body { padding: 40px 18px 64px; }
+    .kop h1 { font-size: 30px; }
+    .aksi { flex-direction: column; align-items: stretch; }
+    button.utama, button.sekunder { width: 100%; }
+    .pantileis dl { grid-template-columns: 1fr; gap: 2px 0; }
+    .pantileis dd { margin-bottom: 8px; }
+    .daftar-kunci li { flex-wrap: wrap; }
+    .daftar-kunci .nama { margin-right: 0; width: 100%; }
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>YT Narrator</h1>
-            <p>Auto-generate YouTube videos from topics</p>
-        </header>
+<main class="lembar">
 
-        <main>
-            <!-- Submit -->
-            <section id="submit-section" class="section">
-                <h2>Create Video</h2>
-                <form id="submit-form">
-                    <textarea id="topic-input" placeholder="Enter topic..." required></textarea>
-                    <button type="submit">Generate</button>
-                </form>
-            </section>
+  <header class="kop">
+    <h1>YT Narrator</h1>
+    <p>Tulis judul topik. Narasi, gambar, dan videonya dibikin otomatis di PC lu.</p>
+  </header>
 
-            <!-- Status -->
-            <section id="status-section" class="section hidden">
-                <h2>Processing</h2>
-                <div class="job-info">
-                    <p>Job ID: <code id="job-id"></code></p>
-                    <p>Status: <span id="job-status" class="status-badge"></span></p>
-                    <p>Stage: <span id="job-stage" style="color: var(--text-tertiary);"></span></p>
-                    <p>Progress: <span id="job-progress" style="color: var(--text-tertiary);"></span></p>
-                </div>
-                <div id="error-msg" class="alert hidden">
-                    <strong>Error:</strong> <span id="error-text"></span>
-                </div>
-            </section>
+  <form id="form-judul" novalidate>
+    <div class="field">
+      <label for="topik">Judul topik</label>
+      <textarea id="topik" name="topik" placeholder="Contoh: Sejarahnya insula Hasta"></textarea>
+      <p class="petunjuk">Makin spesifik makin bagus hasil gambarnya.</p>
+    </div>
+    <div class="aksi">
+      <button type="submit" class="utama" id="tombol">Buat videonya</button>
+      <button type="button" class="sekunder" id="tombol-batal" hidden>Batalkan</button>
+    </div>
+  </form>
 
-            <!-- Download -->
-            <section id="download-section" class="section hidden">
-                <h2>✓ Complete</h2>
-                <p style="color: var(--text-tertiary); margin-bottom: 24px;">Your video is ready</p>
-                <a id="download-btn" href="#" style="
-                    display: inline-block;
-                    padding: 11px 16px;
-                    background: var(--brand-indigo);
-                    color: var(--text-primary);
-                    text-decoration: none;
-                    border-radius: 6px;
-                    margin-right: 8px;
-                    transition: all 0.2s;
-                ">Download Video</a>
-                <button id="regenerate-btn" class="secondary">Regenerate</button>
-                <button id="new-job-btn" class="secondary">New Job</button>
-            </section>
-        </main>
+  <section class="pantileis" id="pantileis" hidden aria-live="polite">
+    <div class="baris-atas">
+      <span class="tahap" id="tahap">Menyiapkan</span>
+      <span class="keadaan" id="keadaan">Berjalan</span>
+    </div>
+    <dl>
+      <dt>ID pekerjaan</dt>
+      <dd id="id-pekerjaan">-</dd>
+      <dt>Tahap sebelumnya</dt>
+      <dd id="tahap-sebelumnya">-</dd>
+    </dl>
+    <a class="unduh" id="unduh" href="#" hidden>Unduh video MP4</a>
+  </section>
 
-        <footer>
-            <p><strong>Cost:</strong> $0.00 | <strong>Drift:</strong> < 100ms | <strong>FPS:</strong> 24</p>
-            <p style="margin-top: 8px;">Powered by HF FLUX.1 + Google Gemini + edge-tts</p>
-        </footer>
+  <div class="galat" id="galat" hidden role="alert">
+    <strong id="galat-judul">Gagal</strong>
+    <span id="galat-pesan"></span>
+  </div>
+
+  <hr class="garis-batas">
+
+  <section class="bagian">
+    <h2 class="judul-bagian">Kunci API</h2>
+    <p class="petunjuk" style="margin-bottom:16px;">
+      FLUX.1 di Hugging Face. Tempel satu kunci per baris, lalu klik Simpan.
+      Kunci dipakai berurutan, jadi menambah beberapa kunci bikin kuota tahan lama.
+    </p>
+
+    <div class="field">
+      <label for="kunci">Kunci HuggingFace</label>
+      <textarea id="kunci" placeholder="hf_xxxxxxxxxxxxxxxxxxxx
+hf_yyyyyyyyyyyyyyyyyyyy
+hf_zzzzzzzzzzzzzzzzzzzz"></textarea>
     </div>
 
-    <script src="/static/script.js"></script>
+    <div class="aksi">
+      <button type="button" class="utama" id="tombol-simpan-kunci">Simpan kunci</button>
+      <span class="petunjuk" id="ringkas-kunci" style="margin-top:0;"></span>
+    </div>
+
+    <ul class="daftar-kunci" id="daftar-kunci"></ul>
+  </section>
+
+  <footer>
+    <span>Berjalan lokal di 127.0.0.1</span>
+    <span>FLUX.1 untuk gambar, edge-tts untuk suara</span>
+  </footer>
+
+</main>
+
+<style>
+  .garis-batas {
+    border: none;
+    border-top: 1px solid var(--garis);
+    margin: 56px 0 40px;
+  }
+</style>
+
+<script>
+  const API = '';
+
+  // Tahapan dipetakan ke label Bahasa Indonesia. Tahap yang tidak dikenal
+  // ditampilkan apa adanya supaya bug kelihatan, bukan disembunyikan.
+  const TAHAP = {
+    pending: 'Menunggu antrean',
+    generating: 'Sedang berjalan',
+    waiting_quota: 'Menunggu kuota',
+    done: 'Selesai',
+    error: 'Gagal',
+    finalized: 'Selesai',
+    regenerating: 'Dibuat ulang',
+    cancelling: 'Dibatalkan',
+    cancelled: 'Dibatalkan',
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  const form = $('form-judul');
+  const tombol = $('tombol');
+  const batal = $('tombol-batal');
+  const topik = $('topik');
+  const pantileis = $('pantileis');
+  const tahap = $('tahap');
+  const keadaan = $('keadaan');
+  const idPekerjaan = $('id-pekerjaan');
+  const tahapSebelumnya = $('tahap-sebelumnya');
+  const unduh = $('unduh');
+  const galat = $('galat');
+  const galatJudul = $('galat-judul');
+  const galatPesan = $('galat-pesan');
+
+  const kunciTarea = $('kunci');
+  const tombolSimpanKunci = $('tombol-simpan-kunci');
+  const ringkasKunci = $('ringkas-kunci');
+  const daftarKunci = $('daftar-kunci');
+
+  let idTugas = null;
+  let timerPolling = null;
+  let tahapTerakhir = null;
+
+  function tampilkanGalat(pesan, judul = 'Gagal') {
+    galat.hidden = false;
+    galat.classList.remove('berhasil');
+    galatJudul.textContent = judul;
+    galatPesan.textContent = pesan;
+  }
+
+  function tampilkanSukses(pesan) {
+    galat.hidden = false;
+    galat.classList.add('berhasil');
+    galatJudul.textContent = 'Tersimpan';
+    galatPesan.textContent = pesan;
+  }
+
+  async function mintaApi(jalur, opsi = {}) {
+    const respons = await fetch(API + jalur, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opsi,
+    });
+    const data = await respons.json().catch(() => ({}));
+    if (!respons.ok) {
+      throw new Error(data.detail || 'Server menjawab ' + respons.status);
+    }
+    return data;
+  }
+
+  // ---- Kunci API ----
+
+  function gambarDaftarKunci(kunci) {
+    daftarKunci.innerHTML = '';
+    if (!kunci.length) {
+      const li = document.createElement('li');
+      li.className = 'kosong';
+      li.textContent = 'Belum ada kunci tersimpan. Generate gambar akan gagal sampai ada minimal satu.';
+      daftarKunci.appendChild(li);
+      ringkasKunci.textContent = '';
+      return;
+    }
+
+    const aktif = kunci.filter((k) => k.enabled).length;
+    ringkasKunci.textContent = aktif + ' dari ' + kunci.length + ' aktif';
+
+    kunci.forEach((k) => {
+      const li = document.createElement('li');
+      if (!k.enabled) li.className = 'mati';
+
+      const nama = document.createElement('span');
+      nama.className = 'nama';
+      nama.textContent = k.label;
+
+      const token = document.createElement('span');
+      token.className = 'token';
+      token.textContent = k.token;
+
+      const aksi = document.createElement('span');
+      aksi.className = 'aksi-kecil';
+
+      const tombolNyalakan = document.createElement('button');
+      tombolNyalakan.type = 'button';
+      tombolNyalakan.className = 'sekunder kecil';
+      tombolNyalakan.textContent = k.enabled ? 'Matikan' : 'Nyalakan';
+      tombolNyalakan.addEventListener('click', async () => {
+        try {
+          const data = await mintaApi('/keys/' + k.index, {
+            method: 'PATCH',
+            body: JSON.stringify({ enabled: !k.enabled }),
+          });
+          gambarDaftarKunci(data.keys);
+        } catch (e) {
+          tampilkanGalat(e.message);
+        }
+      });
+
+      const tombolHapus = document.createElement('button');
+      tombolHapus.type = 'button';
+      tombolHapus.className = 'sekunder kecil';
+      tombolHapus.textContent = 'Hapus';
+      tombolHapus.addEventListener('click', async () => {
+        if (!confirm('Hapus ' + k.label + '? Kunci aslinya tidak bisa dikembalikan.')) return;
+        try {
+          const data = await mintaApi('/keys/' + k.index, { method: 'DELETE' });
+          gambarDaftarKunci(data.keys);
+        } catch (e) {
+          tampilkanGalat(e.message);
+        }
+      });
+
+      aksi.appendChild(tombolNyalakan);
+      aksi.appendChild(tombolHapus);
+      li.appendChild(nama);
+      li.appendChild(token);
+      li.appendChild(aksi);
+      daftarKunci.appendChild(li);
+    });
+  }
+
+  async function muatKunci() {
+    try {
+      const data = await mintaApi('/keys');
+      gambarDaftarKunci(data.keys);
+    } catch (e) {
+      daftarKunci.innerHTML = '';
+      const li = document.createElement('li');
+      li.className = 'kosong';
+      li.textContent = 'Tidak bisa menghubungi server. Jalankan uvicorn dulu.';
+      daftarKunci.appendChild(li);
+    }
+  }
+
+  tombolSimpanKunci.addEventListener('click', async () => {
+    const teks = kunciTarea.value.trim();
+    if (!teks) {
+      tampilkanGalat('Tempel minimal satu kunci dulu.');
+      kunciTarea.focus();
+      return;
+    }
+    tombolSimpanKunci.disabled = true;
+    try {
+      const data = await mintaApi('/keys', {
+        method: 'PUT',
+        body: JSON.stringify({ text: teks }),
+      });
+      kunciTarea.value = '';
+      gambarDaftarKunci(data.keys);
+      tampilkanSukses(data.saved + ' kunci tersimpan. Kunci dipakai berurutan saat generate gambar.');
+    } catch (e) {
+      tampilkanGalat(e.message);
+    } finally {
+      tombolSimpanKunci.disabled = false;
+    }
+  });
+
+  // ---- Alur video ----
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (!topik.value.trim()) {
+      tampilkanGalat('Isi dulu judul topik.');
+      topik.focus();
+      return;
+    }
+
+    tombol.disabled = true;
+    batal.hidden = false;
+    galat.hidden = true;
+    pantileis.hidden = false;
+    tahap.textContent = 'Mengirim';
+    keadaan.textContent = 'Berjalan';
+    keadaan.classList.remove('gagal');
+    tahapSebelumnya.textContent = '-';
+    unduh.hidden = true;
+
+    try {
+      const data = await mintaApi('/job/submit', {
+        method: 'POST',
+        body: JSON.stringify({ topic: topik.value.trim() }),
+      });
+      idTugas = data.job_id;
+      idPekerjaan.textContent = idTugas;
+      tahap.textContent = 'Menunggu antrean';
+
+      // Server menerima job tapi belum menjalankan pipeline sampai di-approve.
+      await mintaApi('/job/' + idTugas + '/approve', { method: 'POST' });
+      mulaiPolling();
+    } catch (e) {
+      tampilkanGalat(e.message);
+      berhentiPolling();
+      tombol.disabled = false;
+      batal.hidden = true;
+    }
+  });
+
+  function mulaiPolling() {
+    berhentiPolling();
+    timerPolling = setInterval(async () => {
+      if (!idTugas) return;
+      try {
+        const data = await mintaApi('/job/' + idTugas);
+        const stage = data.stage || data.status;
+        if (stage !== tahapTerakhir) {
+          tahapSebelumnya.textContent = tahap.textContent;
+          tahapTerakhir = stage;
+        }
+        tahap.textContent = TAHAP[data.status] || stage;
+        keadaan.textContent = 'Berjalan';
+
+        if (data.status === 'error') {
+          keadaan.classList.add('gagal');
+          keadaan.textContent = 'Gagal';
+          tampilkanGalat(data.error_msg || 'Pekerjaan gagal. Cek log backend untuk detail.');
+          berhentiPolling();
+          tombol.disabled = false;
+          batal.hidden = true;
+          return;
+        }
+
+        if (data.status === 'done' || data.status === 'finalized') {
+          keadaan.textContent = 'Selesai';
+          berhentiPolling();
+          tombol.disabled = false;
+          batal.hidden = true;
+          unduh.hidden = false;
+          unduh.href = '/job/' + idTugas + '/video';
+        }
+      } catch (e) {
+        tampilkanGalat(e.message);
+        berhentiPolling();
+      }
+    }, 2000);
+  }
+
+  function berhentiPolling() {
+    if (timerPolling) {
+      clearInterval(timerPolling);
+      timerPolling = null;
+    }
+  }
+
+  batal.addEventListener('click', async () => {
+    if (!idTugas) return;
+    try {
+      await mintaApi('/job/' + idTugas + '/cancel', { method: 'POST' });
+      keadaan.textContent = 'Dibatalkan';
+      berhentiPolling();
+      tombol.disabled = false;
+      batal.hidden = true;
+    } catch (e) {
+      tampilkanGalat(e.message);
+    }
+  });
+
+  muatKunci();
+</script>
 </body>
 </html>

@@ -1,0 +1,26 @@
+# Secrets and credentials
+.env
+data/keys.json
+
+# Runtime data: database, generated video, image cache
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Spike scratch output (regenerate with spike.py)
+spike_output/

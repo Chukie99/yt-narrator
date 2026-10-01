@@ -6,22 +6,43 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from backend.config import BIND_HOST, BIND_PORT, DB_PATH, OUTPUTS_DIR
 from backend.db import init_db, get_db
-from backend.models import JobSubmitRequest, JobEstimateResponse, JobStatusResponse, ScenePatchRequest, StyleBiblePatchRequest
+from backend.models import (
+    JobSubmitRequest,
+    JobEstimateResponse,
+    JobStatusResponse,
+    ScenePatchRequest,
+    StyleBiblePatchRequest,
+    KeysReplaceRequest,
+    KeyToggleRequest,
+)
+from backend.providers.hf_inference import key_store
 from backend.scheduler import scheduler, start_scheduler
 
 # Initialize
 init_db()
 
-app = FastAPI(title="YT Narrator", version="0.1.0")
+async def lifespan(_app: FastAPI):
+    # Lifespan replaces @app.on_event("startup"), which is deprecated and never
+    # ran under TestClient, so these routes were never exercised by the tests.
+    await start_scheduler()
+    yield
+
+
+app = FastAPI(title="YT Narrator", version="0.2.0", lifespan=lifespan)
 
 # Middleware: localhost only
 @app.middleware("http")
 async def enforce_localhost(request, call_next):
-    if request.client.host != "127.0.0.1":
-        raise HTTPException(status_code=403, detail="Forbidden")
+    # Returning a response is the only thing middleware can do. Raising
+    # HTTPException here escapes the app and surfaces as a 500.
+    if request.client is None or request.client.host not in ("127.0.0.1", "::1", "testclient"):
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "App ini hanya jalan di localhost."},
+        )
     return await call_next(request)
 
 
@@ -278,10 +299,47 @@ async def update_style_bible(job_id: str, req: StyleBiblePatchRequest):
     return current
 
 
-@app.on_event("startup")
-async def startup():
-    """Start scheduler."""
-    start_scheduler()
+@app.get("/", include_in_schema=False)
+async def serve_index():
+    """Serve the single-page UI from the same origin as the API."""
+    index = Path(__file__).parent.parent / "frontend" / "index.html"
+    if not index.exists():
+        raise HTTPException(status_code=404, detail="Frontend not found")
+    return FileResponse(index)
+
+
+@app.get("/keys")
+async def list_keys():
+    """List saved HF keys. Tokens are redacted; the browser never sees them whole."""
+    return {"keys": key_store.listing()}
+
+
+@app.put("/keys")
+async def replace_keys(req: KeysReplaceRequest):
+    """Replace the whole key pool, one token per line."""
+    lines = req.text.splitlines()
+    count = key_store.set_tokens(lines)
+    return {"saved": count, "keys": key_store.listing()}
+
+
+@app.patch("/keys/{index}")
+async def toggle_key(index: int, req: KeyToggleRequest):
+    """Enable or disable one key without deleting it."""
+    try:
+        key_store.set_enabled(index, req.enabled)
+    except IndexError:
+        raise HTTPException(status_code=404, detail="Key not found")
+    return {"keys": key_store.listing()}
+
+
+@app.delete("/keys/{index}")
+async def delete_key(index: int):
+    """Remove one key from the pool."""
+    try:
+        key_store.delete(index)
+    except IndexError:
+        raise HTTPException(status_code=404, detail="Key not found")
+    return {"keys": key_store.listing()}
 
 
 if __name__ == "__main__":

@@ -1,28 +1,22 @@
-"""HF Inference Image provider (FLUX.1 Schnell + multi-key APIRoller)."""
+"""HF Inference Image provider (FLUX.1 Schnell, multi-key rotation)."""
 
 import hashlib
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional
 from backend.providers.base import ImageProvider
-from backend.config import IMAGE_MODEL, HF_API_KEYS, CACHE_DIR, FPS
+from backend.config import IMAGE_MODEL, CACHE_DIR, DATA_DIR
+from backend.keystore import KeyStore
+
+# One shared store: the provider and the API routes must see the same pool.
+key_store = KeyStore(DATA_DIR / "keys.json")
 
 
 class HFInferenceImage(ImageProvider):
     """Hugging Face Inference API provider with FLUX.1 Schnell."""
 
-    def __init__(self, model: str = None, api_keys: Dict[int, str] = None):
+    def __init__(self, model: str = None, store: KeyStore = None):
         self.model = model or IMAGE_MODEL
-        self.api_keys = api_keys or HF_API_KEYS
-        self.current_key_idx = 0
-        if not self.api_keys:
-            raise ValueError("No HF_API_KEY_* env vars found")
-
-    def _get_next_key(self) -> str:
-        """Round-robin next API key."""
-        keys_list = list(self.api_keys.values())
-        key = keys_list[self.current_key_idx % len(keys_list)]
-        self.current_key_idx += 1
-        return key
+        self.store = store or key_store
 
     def _cache_key(self, prompt: str, aspect_ratio: str = "16:9") -> str:
         """Generate cache key from prompt hash."""
@@ -43,31 +37,29 @@ class HFInferenceImage(ImageProvider):
             cache_key = self._cache_key(prompt, aspect_ratio)
             out_path = CACHE_DIR / f"{cache_key}.png"
 
-        # Check cache
         if out_path.exists():
             return out_path
 
-        # Generate via HF Inference
-        api_key = self._get_next_key()
+        # Read fresh on every call so keys added mid-run are used without a
+        # restart, and so disabling a key takes effect immediately.
+        api_key = self.store.next_token()
         client = InferenceClient(api_key=api_key)
 
-        # Map aspect ratio to dimensions
-        if aspect_ratio == "16:9":
-            width, height = 1920, 1080
-        elif aspect_ratio == "9:16":
+        if aspect_ratio == "9:16":
             width, height = 1080, 1920
         else:
             width, height = 1920, 1080
 
         try:
-            image_bytes = client.text_to_image(
+            image = client.text_to_image(
                 prompt=prompt,
                 model=self.model,
                 height=height,
                 width=width,
             )
             out_path.parent.mkdir(parents=True, exist_ok=True)
-            out_path.write_bytes(image_bytes)
+            # text_to_image returns a PIL Image, not raw bytes.
+            image.save(out_path)
             return out_path
         except Exception as e:
             raise RuntimeError(f"HF image generation failed: {e}")

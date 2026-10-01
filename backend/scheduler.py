@@ -1,5 +1,6 @@
 """APScheduler job queue setup."""
 
+import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.memory import MemoryJobStore
 from datetime import datetime, timedelta
@@ -75,21 +76,18 @@ async def quota_poller():
             await asyncio.sleep(60)
 
 
-def start_scheduler():
-    """Start scheduler + startup recovery."""
-    import asyncio
+async def start_scheduler():
+    """Start scheduler + startup recovery. Must be awaited from inside the
+    running loop: calling loop.run_until_complete() here would raise
+    "This event loop is already running"."""
+    await startup_recovery()
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(startup_recovery())
-
-    # Start quota poller background task
-    loop.create_task(quota_poller())
+    # Resume jobs that were waiting on quota when the app was closed.
+    asyncio.create_task(quota_poller())
 
     scheduler.start()
 
 
 if __name__ == "__main__":
-    import asyncio
-
     asyncio.run(startup_recovery())
     print("Recovery complete")
