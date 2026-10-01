@@ -17,21 +17,15 @@ from backend.db import get_db
 from backend import config as cfg
 
 
-def _state(job_id):
-    from conftest import job_state
-
-    return job_state(job_id)
-
-
 @pytest.mark.asyncio
-async def test_pipeline_produces_playable_video(pipeline):
+async def test_pipeline_produces_playable_video(pipeline, job_state):
     job_id, tmp = pipeline
 
     from backend.worker import process_job
 
     await process_job(job_id)
 
-    status, stage, err = _state(job_id)
+    status, stage, err = job_state(job_id)
     assert status == "done", f"pipeline failed at stage={stage}: {err}"
     assert stage is None
 
@@ -41,7 +35,7 @@ async def test_pipeline_produces_playable_video(pipeline):
 
 
 @pytest.mark.asyncio
-async def test_every_clip_and_audio_has_its_own_file(pipeline):
+async def test_every_clip_and_audio_has_its_own_file(pipeline, job_state):
     """Every DB row must point at a distinct, existing file.
 
     The providers default to one shared temp filename, so passing no out_path
@@ -51,7 +45,7 @@ async def test_every_clip_and_audio_has_its_own_file(pipeline):
     from backend.worker import process_job
 
     await process_job(job_id)
-    status, stage, err = _state(job_id)
+    status, stage, err = job_state(job_id)
     assert status == "done", f"failed at {stage}: {err}"
 
     with get_db() as db:
@@ -82,7 +76,7 @@ async def test_every_clip_and_audio_has_its_own_file(pipeline):
 
 
 @pytest.mark.asyncio
-async def test_audio_and_video_lengths_match(pipeline):
+async def test_audio_and_video_lengths_match(pipeline, job_state):
     """The regression that motivated this test: 3 Ken Burns clips per scene
     each got the full scene duration, so the video ran 3x longer than the
     audio. Compiled output must not drift."""
@@ -93,7 +87,7 @@ async def test_audio_and_video_lengths_match(pipeline):
     from backend.worker import process_job
 
     await process_job(job_id)
-    status, stage, err = _state(job_id)
+    status, stage, err = job_state(job_id)
     assert status == "done", f"failed at {stage}: {err}"
 
     final = tmp / "outputs" / job_id / "r1" / "final.mp4"

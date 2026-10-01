@@ -1,10 +1,7 @@
-"""Shared fixtures: a job wired to tmp paths with a stubbed LLM.
-
-The stub keeps pipeline tests free of a Gemini key; everything downstream of
-the LLM (TTS, images, motion, compile) still runs for real.
-"""
+"""Pytest fixtures."""
 
 import sys
+import tempfile
 import uuid
 from pathlib import Path
 
@@ -14,6 +11,23 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend import config as cfg
 from backend.db import get_db, init_db
+
+
+@pytest.fixture
+def test_db():
+    """Fixture providing a fresh test database."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "test_narrator.db"
+        init_db(db_path)
+        yield db_path
+
+        # Close any thread-local connections
+        import backend.db as db_module
+        if hasattr(db_module, '_local'):
+            if hasattr(db_module._local, 'connection'):
+                db_module._local.connection.close()
+                delattr(db_module._local, 'connection')
+
 
 NARASI = (
     "Insula adalah rumah tunggal di Romawi kuno. "
@@ -64,12 +78,18 @@ class StubLLM:
 def pipeline(monkeypatch, tmp_path):
     """Point every path at tmp, stub the LLM, return (job_id, tmp_path)."""
     import backend.worker as worker
+    from backend import db as db_module
 
     monkeypatch.setattr(worker, "GeminiLLM", StubLLM)
     monkeypatch.setattr(worker, "OUTPUTS_DIR", tmp_path / "outputs")
     monkeypatch.setattr(cfg, "CACHE_DIR", tmp_path / "cache")
 
-    init_db()
+    # Own database file: without this these tests insert real jobs into the
+    # production DB and lock it out from a running server.
+    db_file = tmp_path / "narrator.db"
+    init_db(db_file)
+    db_module.set_db_path(db_file)
+
     job_id = str(uuid.uuid4())
     with get_db() as db:
         db.execute(
@@ -77,11 +97,19 @@ def pipeline(monkeypatch, tmp_path):
             "VALUES (?, ?, ?, ?, datetime('now'))",
             (job_id, "Sejarahnya insula Hasta", "pending", 1),
         )
-    return job_id, tmp_path
+
+    yield job_id, tmp_path
+
+    db_module.set_db_path(cfg.DB_PATH)
 
 
-def job_state(job_id):
-    with get_db() as db:
-        return db.execute(
-            "SELECT status, stage, error_msg FROM jobs WHERE id = ?", (job_id,)
-        ).fetchone()
+@pytest.fixture
+def job_state():
+    """Return a callable reading a job's (status, stage, error_msg)."""
+    def _read(job_id):
+        with get_db() as db:
+            return db.execute(
+                "SELECT status, stage, error_msg FROM jobs WHERE id = ?", (job_id,)
+            ).fetchone()
+
+    return _read

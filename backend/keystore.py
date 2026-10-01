@@ -119,14 +119,22 @@ class KeyStore:
             for i, entry in enumerate(self.all())
         ]
 
-    def next_token(self) -> str:
-        """Round-robin over enabled keys, reading from disk each call."""
+    def enabled_tokens(self) -> List[str]:
+        """Every enabled token, starting from a rotating offset.
+
+        Used when a call fails: the caller wants each key tried once before
+        giving up, not just the next one in the pool."""
         with self._lock:
             keys = [k for k in self._read() if k["enabled"]]
             if not keys:
                 raise RuntimeError(
                     "Semua kunci HF nonaktif atau belum diisi. Tambahkan di panel Kunci API."
                 )
-            index = self._rotation % len(keys)
-            self._rotation = (index + 1) % len(keys)
-            return keys[index]["token"]
+            start = self._rotation % len(keys)
+            self._rotation = (start + 1) % len(keys)
+            ordered = keys[start:] + keys[:start]
+            return [k["token"] for k in ordered]
+
+    def next_token(self) -> str:
+        """Round-robin over enabled keys, reading from disk each call."""
+        return self.enabled_tokens()[0]

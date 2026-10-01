@@ -10,13 +10,36 @@ from backend.config import DB_PATH
 _local = threading.local()
 
 
-def get_db_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
+def set_db_path(db_path: Path):
+    """Point the thread-local connection at another database file.
+
+    get_db_connection memoizes on the thread, so switching paths also has to
+    drop the cached connection. Tests use this to stop writing jobs into the
+    production database.
+    """
+    if hasattr(_local, "connection"):
+        try:
+            _local.connection.close()
+        except Exception:
+            pass
+        delattr(_local, "connection")
+    _local.db_path = Path(db_path)
+
+
+def get_db_connection(db_path: Path = None) -> sqlite3.Connection:
     """Get thread-local DB connection (creates if missing)."""
-    if not hasattr(_local, "connection"):
+    db_path = Path(db_path or getattr(_local, "db_path", None) or DB_PATH)
+    if not hasattr(_local, "connection") or getattr(_local, "path", None) != db_path:
+        if hasattr(_local, "connection"):
+            try:
+                _local.connection.close()
+            except Exception:
+                pass
         _local.connection = sqlite3.connect(str(db_path), check_same_thread=False)
         _local.connection.execute("PRAGMA foreign_keys = ON")
         _local.connection.execute("PRAGMA journal_mode = WAL")
         _local.connection.execute("PRAGMA busy_timeout = 5000")
+        _local.path = db_path
     return _local.connection
 
 
