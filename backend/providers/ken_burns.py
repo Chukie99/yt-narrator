@@ -47,7 +47,9 @@ class KenBurnsMotion:
             timeout=60,
         )
 
-        # Ken Burns patterns
+        # Ken Burns patterns. These must be zoompan OPTIONS (z=, x=, y=), not
+        # a bare filter body: "-vf z='...':x='...'" makes FFmpeg parse "z" as
+        # a filter name and fail with "No option name near ...".
         patterns = {
             "wide": "z='min(1+0.0015*on,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'",
             "close-up": "z='min(1+0.002*on,1.5)':x='iw/4':y='ih/4'",
@@ -65,7 +67,7 @@ class KenBurnsMotion:
                 "-i",
                 str(upscaled_path),
                 "-vf",
-                f"{zoompan}:d=1:s={self.resolution[0]}x{self.resolution[1]}:fps={self.fps}",
+                f"zoompan={zoompan}:d=1:s={self.resolution[0]}x{self.resolution[1]}:fps={self.fps}",
                 "-t",
                 str(duration_sec),
                 "-c:v",

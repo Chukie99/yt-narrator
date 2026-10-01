@@ -36,6 +36,9 @@ IMAGE_MODEL = os.getenv("IMAGE_MODEL", "black-forest-labs/FLUX.1-schnell")
 # TTS (edge-tts)
 TTS_PROVIDER = os.getenv("TTS_PROVIDER", "edge_tts")
 TTS_LANG = os.getenv("TTS_LANG", "id-ID")
+# A full voice id, not a locale: edge-tts only publishes Ardi and Gadis for
+# Indonesian, so "id-ID" or "id-ID-Neural2-A" both fail at synthesis.
+TTS_VOICE = os.getenv("TTS_VOICE", "id-ID-GadisNeural")
 
 # Video (Ken Burns)
 VIDEO_PROVIDER = os.getenv("VIDEO_PROVIDER", "ken_burns")

@@ -1,6 +1,8 @@
 """Job worker orchestrator (8-stage pipeline)."""
 
 import asyncio
+import json
+import logging
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -11,6 +13,8 @@ from backend.providers.gemini_llm import GeminiLLM
 from backend.providers.hf_inference import HFInferenceImage
 from backend.providers.edge_tts import EdgeTTSProvider
 from backend.providers.ken_burns import KenBurnsMotion
+
+logger = logging.getLogger(__name__)
 
 
 async def process_job(job_id: str):
@@ -48,7 +52,6 @@ async def process_job(job_id: str):
                          ("style_bible", "Style 1/1", job_id))
 
             style_bible = await llm.generate_style_bible(full_narasi)
-            import json
             cursor.execute("UPDATE jobs SET style_bible_json = ? WHERE id = ?",
                          (json.dumps(style_bible), job_id))
 
@@ -67,6 +70,12 @@ async def process_job(job_id: str):
                          ("tts", f"TTS 0/{len(scenes)}", job_id))
 
             tts = EdgeTTSProvider()
+            # Same reason as the clips: the provider's default out_path is one
+            # shared temp file, which would leave every scene's audio_path
+            # pointing at the last scene.
+            audio_dir = OUTPUTS_DIR / job_id / f"r{revision}" / "audio"
+            audio_dir.mkdir(parents=True, exist_ok=True)
+
             for scene_num in range(1, len(scenes) + 1):
                 cursor.execute(
                     "SELECT narration_text FROM job_scenes WHERE job_id = ? AND revision = ? AND scene_num = ?",
@@ -75,7 +84,9 @@ async def process_job(job_id: str):
                 scene_row = cursor.fetchone()
                 if scene_row:
                     narration = scene_row[0]
-                    audio_path, duration = await tts.synthesize(narration)
+                    audio_path, duration = await tts.synthesize(
+                        narration, audio_dir / f"scene_{scene_num}.wav"
+                    )
                     cursor.execute(
                         """UPDATE job_scenes 
                            SET audio_path = ?, audio_duration_sec = ?, status = ?
@@ -120,9 +131,15 @@ async def process_job(job_id: str):
             cum_duration = 0.0
             compositions = ["wide", "close-up", "from-top"]
 
+            # Each clip needs its own file. The provider defaults to a single
+            # temp name, so without this every row would point at the same
+            # overwritten file.
+            clips_dir = OUTPUTS_DIR / job_id / f"r{revision}" / "clips"
+            clips_dir.mkdir(parents=True, exist_ok=True)
+
             for scene_num in range(1, len(scenes) + 1):
                 cursor.execute(
-                    """SELECT audio_duration_sec, image_path FROM job_scenes 
+                    """SELECT audio_duration_sec, image_path FROM job_scenes
                        WHERE job_id = ? AND revision = ? AND scene_num = ?""",
                     (job_id, revision, scene_num)
                 )
@@ -132,19 +149,33 @@ async def process_job(job_id: str):
                     if not image_path:
                         continue
 
+                    # Cumulative frame math keeps every scene frame-aligned to
+                    # the timeline, so no drift accumulates across the video.
                     frame_start = round(cum_duration * 24)
                     frame_end = round((cum_duration + duration) * 24)
-                    num_frames = frame_end - frame_start
+                    scene_frames = frame_end - frame_start
 
+                    # The sub-clips are SEQUENTIAL parts of this scene, so the
+                    # scene's frames are split between them. Giving each one
+                    # the full scene duration made the video 3x too long.
                     for clip_variant, composition in enumerate(compositions, 1):
+                        variant_start = round((clip_variant - 1) * scene_frames / len(compositions))
+                        variant_end = round(clip_variant * scene_frames / len(compositions))
+                        variant_frames = variant_end - variant_start
+                        variant_duration = variant_frames / ken_burns.fps
+
                         clip_path = await ken_burns.animate(
-                            Path(image_path), duration, composition, num_frames
+                            Path(image_path),
+                            variant_duration,
+                            composition,
+                            variant_frames,
+                            clips_dir / f"s{scene_num}_{clip_variant}_{composition}.mp4",
                         )
                         cursor.execute(
-                            """INSERT INTO scene_clips 
+                            """INSERT INTO scene_clips
                                (job_id, revision, scene_num, clip_variant, composition, video_path, num_frames)
                                VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                            (job_id, revision, scene_num, clip_variant, composition, str(clip_path), num_frames)
+                            (job_id, revision, scene_num, clip_variant, composition, str(clip_path), variant_frames)
                         )
 
                     cum_duration += duration
@@ -202,8 +233,21 @@ async def process_job(job_id: str):
                          ("done", None, datetime.utcnow().isoformat(), job_id))
 
         except Exception as e:
-            cursor.execute("UPDATE jobs SET status = ?, error_msg = ? WHERE id = ?",
-                         ("error", str(e)[:2000], job_id))
+            # Record the failure in its own committed transaction, THEN
+            # re-raise. Doing the UPDATE on the shared cursor and then raising
+            # makes the db context manager roll it back, so the job silently
+            # stays in its previous status (e.g. "pending") with no error and
+            # the UI polls forever.
+            error_msg = f"{type(e).__name__}: {e}"[:2000]
+            try:
+                with get_db() as err_db:
+                    err_db.execute(
+                        "UPDATE jobs SET status = ?, error_msg = ? WHERE id = ?",
+                        ("error", error_msg, job_id),
+                    )
+            except Exception:
+                # Never let error-reporting itself mask the original failure.
+                logger.exception("failed to record error for job %s", job_id)
             raise
 
 

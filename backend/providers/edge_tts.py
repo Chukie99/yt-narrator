@@ -4,27 +4,25 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Tuple
 from backend.providers.base import TTSProvider
-from backend.config import TTS_LANG
+from backend.config import TTS_LANG, TTS_VOICE as DEFAULT_VOICE
 
 
 class EdgeTTSProvider(TTSProvider):
     """Edge-TTS provider (free, no API key required)."""
 
-    def __init__(self, lang: str = None):
+    def __init__(self, lang: str = None, voice: str = None):
         self.lang = lang or TTS_LANG
+        # edge-tts has no "Neural2" voices for Indonesian; only Ardi and Gadis.
+        self.voice = voice or DEFAULT_VOICE
 
     async def synthesize(
         self,
         text: str,
-        lang: str = None,
         out_path: Optional[Path] = None,
     ) -> Tuple[Path, float]:
         """Synthesize text to WAV via edge-tts."""
         from edge_tts import Communicate
         import tempfile
-
-        lang = lang or self.lang
-        voice = f"{lang}-Neural2-A"  # e.g., "id-ID-GadisNeural"
 
         if out_path is None:
             out_path = Path(tempfile.gettempdir()) / "tts_temp.wav"
@@ -33,7 +31,7 @@ class EdgeTTSProvider(TTSProvider):
         mp3_path = out_path.with_suffix(".mp3")
 
         try:
-            communicate = Communicate(text, voice)
+            communicate = Communicate(text, self.voice)
             await communicate.save(str(mp3_path))
 
             # Convert MP3 → WAV 44100 mono
