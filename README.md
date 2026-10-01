@@ -27,22 +27,31 @@ cd yt-narrator
 pip install -r requirements.txt
 ```
 
-### 2. Set env vars
+### 2. Set the Gemini key
 
 ```bash
-export GEMINI_API_KEY="your-gemini-key"
-export HF_API_KEY_1="your-hf-key"
+echo "GEMINI_API_KEY=your-key" > .env
 ```
 
-### 3. Start server
+HuggingFace keys are **not** set here. Add them in the UI (see below) so you
+can turn individual keys off without restarting.
+
+### 3. Start the server
 
 ```bash
-uvicorn backend.main:app --host 127.0.0.1 --port 8000
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-### 4. Open UI
+### 4. Open http://127.0.0.1:8000
 
-http://localhost:8000
+Paste one HF key per line in the **Kunci API** panel and click **Simpan kunci**.
+Keys rotate one at a time; disable one from the list if it runs out. Stored in
+`data/keys.json`, which is gitignored. The browser only ever sees the last four
+characters.
+
+### 5. Generate
+
+Type a topic, click **Buat videonya**, watch the stage advance, download the MP4.
 
 ---
 
@@ -50,11 +59,20 @@ http://localhost:8000
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
+| GET | `/` | Web UI |
+| GET | `/keys` | List keys (redacted) |
+| PUT | `/keys` | Replace the whole pool, one token per line |
+| PATCH | `/keys/{index}` | Enable/disable one key |
+| DELETE | `/keys/{index}` | Remove one key |
 | POST | `/job/submit` | Create new job |
 | GET | `/job/{id}` | Job status |
 | GET | `/job/{id}/video` | Download video |
-| PATCH | `/job/{id}/approve` | Approve & start |
-| DELETE | `/job/{id}` | Cancel/delete |
+| POST | `/job/{id}/approve` | Enqueue a submitted job |
+| POST | `/job/{id}/cancel` | Cancel |
+| POST | `/job/{id}/regenerate` | New revision |
+| PATCH | `/job/{id}/style-bible` | Edit style bible |
+| GET | `/jobs` | Recent jobs |
+| DELETE | `/job/{id}` | Delete finished job |
 
 ---
 
@@ -68,7 +86,7 @@ backend/
 ├── config.py            # Env config
 ├── worker.py            # 8-stage pipeline
 ├── scheduler.py         # APScheduler queue
-├── api_roller.py        # Multi-key rotation
+├── keystore.py          # HF key pool (data/keys.json, reloaded per call)
 ├── rate_limiter.py      # Quota + backoff
 └── providers/
     ├── base.py          # Abstract interfaces
@@ -78,9 +96,8 @@ backend/
     └── ken_burns.py     # Ken Burns motion
 
 frontend/
-├── index.html           # Web UI
-├── script.js            # Job submission
-└── style.css            # Clean antislop design
+├── index.html           # Whole UI, CSS and JS inline
+├── mockup.html          # Standalone design mockup (no backend)
 ```
 
 ---
@@ -137,7 +154,14 @@ pytest tests/ -v
 Results:
 - test_db.py: 3/3 pass
 - test_providers.py: 8/8 pass
-- test_e2e.py: Config + schema verified
+- test_keystore.py: 18/18 pass
+- test_keys_api.py: 9/9 pass
+- test_e2e.py: 9/9 pass
+- 47 total
+
+`test_e2e.py` is offline: it checks wiring (app boots, key routes, submit
+lands in the DB, guards reject bad input). The full pipeline needs live API
+keys and lives in `spike.py`.
 
 ---
 
