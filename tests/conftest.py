@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend import config as cfg
 from backend.db import get_db, init_db
+from backend.keystore import KeyStore
 
 
 @pytest.fixture
@@ -101,6 +102,26 @@ def pipeline(monkeypatch, tmp_path):
     yield job_id, tmp_path
 
     db_module.set_db_path(cfg.DB_PATH)
+
+
+@pytest.fixture
+def hf_keys_available():
+    """Skip when no HF key is configured.
+
+    The pipeline tests render images for real (that is the point of them), so
+    they need a working key in data/keys.json. Everything else in the suite
+    runs without one.
+    """
+    store = KeyStore(cfg.DATA_DIR / "keys.json")
+    try:
+        keys = [k for k in store.all() if k["enabled"] and k["token"]]
+    except Exception:
+        keys = []
+    if not keys:
+        pytest.skip(
+            "no HF key in data/keys.json - add one in the UI (Kunci API panel) "
+            "or run `pytest tests/ --ignore=tests/test_pipeline.py`"
+        )
 
 
 @pytest.fixture

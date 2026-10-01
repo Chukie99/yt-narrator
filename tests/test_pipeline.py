@@ -18,7 +18,7 @@ from backend import config as cfg
 
 
 @pytest.mark.asyncio
-async def test_pipeline_produces_playable_video(pipeline, job_state):
+async def test_pipeline_produces_playable_video(pipeline, job_state, hf_keys_available):
     job_id, tmp = pipeline
 
     from backend.worker import process_job
@@ -35,7 +35,7 @@ async def test_pipeline_produces_playable_video(pipeline, job_state):
 
 
 @pytest.mark.asyncio
-async def test_every_clip_and_audio_has_its_own_file(pipeline, job_state):
+async def test_every_clip_and_audio_has_its_own_file(pipeline, job_state, hf_keys_available):
     """Every DB row must point at a distinct, existing file.
 
     The providers default to one shared temp filename, so passing no out_path
@@ -76,7 +76,7 @@ async def test_every_clip_and_audio_has_its_own_file(pipeline, job_state):
 
 
 @pytest.mark.asyncio
-async def test_audio_and_video_lengths_match(pipeline, job_state):
+async def test_audio_and_video_lengths_match(pipeline, job_state, hf_keys_available):
     """The regression that motivated this test: 3 Ken Burns clips per scene
     each got the full scene duration, so the video ran 3x longer than the
     audio. Compiled output must not drift."""
