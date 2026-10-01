@@ -117,3 +117,56 @@ pytest tests/test_api_roller.py -v  # (will create in Task 3)
 ---
 
 End Session 2.
+
+
+---
+
+## Session End: 2026-10-01T05:35:58Z (Token limit approaching)
+
+**Session 2 completed:**
+- Task 1: ✓ Database + config (3/3 tests)
+- Task 2: ✓ Providers (8/8 tests, 4 implementations)
+- Task 3: ✓ APIRoller + RateLimiter (5.5 KB)
+- **3 commits total**
+
+**Status:** 3 of 7 tasks done (42%)
+
+**Remaining (4 tasks, ~5-6 hours):**
+- Task 4: Job orchestrator + APScheduler (~2h)
+- Task 5: FastAPI routes (~1.5h)
+- Task 6: Frontend UI (~1h)
+- Task 7: E2E tests + docs (~1-1.5h)
+
+**Next session entry:**
+```
+cd ~/yt-narrator
+# Resume Task 4: Job orchestrator
+# Ledger: .superpowers/sdd/2026-10-01-yt-narrator-implementation/progress.md
+# Git: 3 commits (all prior tasks done)
+```
+
+**API will be running after Task 5 (FastAPI routes).**
+
+**Spike test:** Can run after Task 5 when FastAPI endpoint ready.
+
+---
+
+## Architecture Status
+
+✅ **Stable & tested:**
+- Database schema (7 tables, WAL, per-thread)
+- Config module (env-driven)
+- 4 provider implementations (Gemini, HF, edge-tts, Ken Burns)
+- Multi-key rotation + rate limiting
+
+⏳ **Next phase:**
+- Job orchestrator (8-stage pipeline orchestration)
+- FastAPI routes (10+ endpoints)
+- Frontend UI (submit → status → review → download)
+- E2E tests
+
+**No breaking changes expected.**
+
+---
+
+End ledger.
