@@ -32,6 +32,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # add or disable them while the app is running. See backend/keystore.py.
 IMAGE_PROVIDER = os.getenv("IMAGE_PROVIDER", "hf_inference")
 IMAGE_MODEL = os.getenv("IMAGE_MODEL", "black-forest-labs/FLUX.1-schnell")
+# Keyless alternative: no account, no monthly quota, but the free tier is
+# intermittent and caps at 1024x576. Ken Burns scales up at compile time.
+POLLINATIONS_MODEL = os.getenv("POLLINATIONS_MODEL", "flux")
 
 # TTS (edge-tts)
 TTS_PROVIDER = os.getenv("TTS_PROVIDER", "edge_tts")
